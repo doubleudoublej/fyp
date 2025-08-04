@@ -1,0 +1,9 @@
+{
+    "java.enabled": false,
+    "java.server.launchMode": "Standard",
+    "java.import.gradle.enabled": false,
+    "files.exclude": {
+        "**/.gradle": true,
+        "**/build": true
+    }
+}
