@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/bottom_navigation_bar.dart';
 
 class ArticlesScreen extends StatefulWidget {
   const ArticlesScreen({super.key});
@@ -53,44 +54,37 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
 
-                    // Large article card with arrows
+                    // Large content area with navigation arrows
                     Container(
                       height: 200,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: Colors.grey.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Stack(
                         children: [
                           // Main content area
-                          Center(
+                          const Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text(
+                                Text(
                                   'Image + Text',
                                   style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                     color: Colors.black54,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 10),
                                 Text(
-                                  articles[currentArticleIndex],
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
                                   'Clickable',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 14,
                                     color: Colors.black54,
                                   ),
                                 ),
@@ -110,11 +104,25 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                                       ? currentArticleIndex - 1
                                       : articles.length - 1;
                                 });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Showing: ${articles[currentArticleIndex]}',
+                                    ),
+                                  ),
+                                );
                               },
-                              child: const Icon(
-                                Icons.arrow_back_ios,
-                                color: Colors.black54,
-                                size: 24,
+                              child: Container(
+                                width: 40,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_back_ios,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
@@ -131,11 +139,41 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                                       (currentArticleIndex + 1) %
                                       articles.length;
                                 });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Showing: ${articles[currentArticleIndex]}',
+                                    ),
+                                  ),
+                                );
                               },
-                              child: const Icon(
-                                Icons.arrow_forward_ios,
-                                color: Colors.black54,
-                                size: 24,
+                              child: Container(
+                                width: 40,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Current article indicator
+                          Positioned(
+                            bottom: 10,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Text(
+                                articles[currentArticleIndex],
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black45,
+                                ),
                               ),
                             ),
                           ),
@@ -145,35 +183,35 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
 
                     const SizedBox(height: 40),
 
-                    // Theme buttons grid (2x2)
+                    // Theme buttons in 2x2 grid
                     Expanded(
                       child: GridView.count(
                         crossAxisCount: 2,
-                        crossAxisSpacing: 15,
-                        mainAxisSpacing: 15,
-                        childAspectRatio: 2.5,
+                        crossAxisSpacing: 20,
+                        mainAxisSpacing: 20,
                         children: [
                           // Theme 1
                           ElevatedButton(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Theme 1 selected'),
+                                  content: Text('Theme 1 selected!'),
                                 ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey.shade300,
-                              foregroundColor: Colors.black,
+                              backgroundColor: Colors.grey.withValues(
+                                alpha: 0.7,
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             child: const Text(
                               'Theme 1',
                               style: TextStyle(
+                                color: Colors.black,
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -183,22 +221,23 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Theme 2 selected'),
+                                  content: Text('Theme 2 selected!'),
                                 ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey.shade300,
-                              foregroundColor: Colors.black,
+                              backgroundColor: Colors.grey.withValues(
+                                alpha: 0.7,
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             child: const Text(
                               'Theme 2',
                               style: TextStyle(
+                                color: Colors.black,
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -208,22 +247,23 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Theme 3 selected'),
+                                  content: Text('Theme 3 selected!'),
                                 ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey.shade300,
-                              foregroundColor: Colors.black,
+                              backgroundColor: Colors.grey.withValues(
+                                alpha: 0.7,
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             child: const Text(
                               'Theme 3',
                               style: TextStyle(
+                                color: Colors.black,
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -233,94 +273,36 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Theme 4 selected'),
+                                  content: Text('Theme 4 selected!'),
                                 ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey.shade300,
-                              foregroundColor: Colors.black,
+                              backgroundColor: Colors.grey.withValues(
+                                alpha: 0.7,
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             child: const Text(
                               'Theme 4',
                               style: TextStyle(
+                                color: Colors.black,
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
 
-      // Bottom Navigation (same as home screen)
-      bottomNavigationBar: Container(
-        height: 80,
-        color: Colors.black,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // Home icon
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop(); // Go back to home
-              },
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: const BoxDecoration(
-                  color: Colors.orange,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.home, color: Colors.white, size: 25),
-              ),
-            ),
-            // Target icon
-            Container(
-              width: 50,
-              height: 50,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.track_changes,
-                color: Colors.white,
-                size: 25,
-              ),
-            ),
-            // Book/Education icon (highlighted since we're on this page)
-            Container(
-              width: 50,
-              height: 50,
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.menu_book, color: Colors.white, size: 25),
-            ),
-            // Profile icon
-            Container(
-              width: 50,
-              height: 50,
-              decoration: const BoxDecoration(
-                color: Colors.grey,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.person, color: Colors.white, size: 25),
-            ),
+            // Custom Bottom Navigation (index 2 = Articles)
+            const CustomBottomNavigationBar(currentIndex: 2),
           ],
         ),
       ),

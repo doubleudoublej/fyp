@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const MentalHealthApp());
@@ -16,7 +16,7 @@ class MentalHealthApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
