@@ -16,23 +16,24 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
 
   // Sample mood data for demonstration (in real app, this would come from database)
   Map<DateTime, Map<String, dynamic>> moodData = {
-    DateTime(2025, 9, 1): {'mood': '😊', 'journal': 'Great day at work!'},
-    DateTime(2025, 9, 2): {
+    DateTime(2025, 8, 1): {'mood': '😊', 'journal': 'Great start to August!'},
+    DateTime(2025, 8, 2): {
       'mood': '😐',
       'journal': 'Average day, nothing special',
     },
-    DateTime(2025, 9, 3): {'mood': '😔', 'journal': 'Felt a bit down today'},
-    DateTime(2025, 9, 4): {'mood': '😊', 'journal': 'Good morning workout!'},
-    DateTime(2025, 9, 5): {'mood': '😍', 'journal': 'Amazing day with friends'},
-    DateTime(2025, 9, 6): {'mood': '😐', 'journal': 'Work was stressful'},
-    DateTime(2025, 9, 7): {'mood': '😔', 'journal': 'Rainy day blues'},
-    DateTime(2025, 9, 8): {'mood': '😊', 'journal': 'Family time was nice'},
-    DateTime(2025, 9, 9): {'mood': '😤', 'journal': 'Traffic was terrible'},
-    DateTime(2025, 9, 10): {'mood': '😊', 'journal': 'Productive day'},
-    DateTime(2025, 9, 11): {'mood': '😍', 'journal': 'Got promoted!'},
-    DateTime(2025, 9, 12): {'mood': '😐', 'journal': 'Regular Thursday'},
-    DateTime(2025, 9, 13): {'mood': '😊', 'journal': 'Weekend plans made'},
-    DateTime(2025, 9, 14): {'mood': '😤', 'journal': 'Argument with colleague'},
+    DateTime(2025, 8, 3): {'mood': '😔', 'journal': 'Felt a bit down today'},
+    DateTime(2025, 8, 4): {'mood': '😊', 'journal': 'Good morning workout!'},
+    DateTime(2025, 8, 5): {'mood': '😍', 'journal': 'Amazing day with friends'},
+    DateTime(2025, 8, 6): {'mood': '😐', 'journal': 'Work was stressful'},
+    DateTime(2025, 8, 7): {'mood': '😔', 'journal': 'Rainy day blues'},
+    DateTime(2025, 8, 8): {'mood': '😊', 'journal': 'Family time was nice'},
+    DateTime(2025, 8, 9): {'mood': '😤', 'journal': 'Traffic was terrible'},
+    DateTime(2025, 8, 10): {'mood': '😊', 'journal': 'Productive day'},
+    DateTime(2025, 8, 11): {'mood': '😍', 'journal': 'Weekend was great!'},
+    DateTime(2025, 8, 12): {'mood': '😐', 'journal': 'Regular Monday'},
+    DateTime(2025, 8, 13): {'mood': '😊', 'journal': 'Mid-week progress'},
+    DateTime(2025, 8, 14): {'mood': '�', 'journal': 'Almost weekend!'},
+    DateTime(2025, 8, 15): {'mood': '😊', 'journal': 'Today feels good'},
   };
 
   List<String> moodEmojis = ['😊', '😐', '😔', '😍', '😤', '😱', '🤮'];
@@ -42,6 +43,24 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
   void dispose() {
     journalController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize to current month (August 2025)
+    currentDate = DateTime(2025, 8);
+    // Filter out any future mood data that might exist
+    _filterPastMoodData();
+  }
+
+  // Method to ensure only past and current mood data is kept
+  void _filterPastMoodData() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Remove any mood entries that are in the future
+    moodData.removeWhere((date, data) => date.isAfter(today));
   }
 
   void saveMoodEntry() {
@@ -148,14 +167,40 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
               ),
               IconButton(
                 onPressed: () {
-                  setState(() {
-                    currentDate = DateTime(
+                  final now = DateTime.now();
+                  final nextMonth = DateTime(
+                    currentDate.year,
+                    currentDate.month + 1,
+                  );
+
+                  // Only allow navigation to next month if it's not in the future
+                  if (nextMonth.year < now.year ||
+                      (nextMonth.year == now.year &&
+                          nextMonth.month <= now.month)) {
+                    setState(() {
+                      currentDate = nextMonth;
+                    });
+                  }
+                },
+                icon: Icon(
+                  Icons.chevron_right,
+                  size: 28,
+                  color: () {
+                    final now = DateTime.now();
+                    final nextMonth = DateTime(
                       currentDate.year,
                       currentDate.month + 1,
                     );
-                  });
-                },
-                icon: const Icon(Icons.chevron_right, size: 28),
+
+                    // Gray out the button if next month is in the future
+                    if (nextMonth.year > now.year ||
+                        (nextMonth.year == now.year &&
+                            nextMonth.month > now.month)) {
+                      return Colors.grey.withValues(alpha: 0.4);
+                    }
+                    return Colors.black;
+                  }(),
+                ),
               ),
             ],
           ),
