@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.ArticleMapper">
+    <resultMap id="ArticleResultMap" type="com.example.demo.model.Article">
+        <id property="id" column="id" />
+        <result property="title" column="title" />
+        <result property="content" column="content" />
+        <result property="author" column="author" />
+        <result property="timestamp" column="timestamp" />
+    </resultMap>
+
+    <select id="selectArticleById" resultMap="ArticleResultMap">
+        SELECT * FROM articles WHERE id = #{id}
+    </select>
+
+    <select id="selectAllArticles" resultMap="ArticleResultMap">
+        SELECT * FROM articles
+    </select>
+
+    <insert id="insertArticle" parameterType="com.example.demo.model.Article" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO articles (title, content, author, timestamp)
+        VALUES (#{title}, #{content}, #{author}, #{timestamp})
+    </insert>
+
+    <update id="updateArticle" parameterType="com.example.demo.model.Article">
+        UPDATE articles SET title=#{title}, content=#{content}, author=#{author}, timestamp=#{timestamp} WHERE id=#{id}
+    </update>
+
+    <delete id="deleteArticle" parameterType="long">
+        DELETE FROM articles WHERE id=#{id}
+    </delete>
+</mapper>

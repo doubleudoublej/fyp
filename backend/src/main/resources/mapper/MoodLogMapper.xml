@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.MoodLogMapper">
+    <resultMap id="MoodLogResultMap" type="com.example.demo.model.MoodLog">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="mood" column="mood" />
+        <result property="timestamp" column="timestamp" />
+        <result property="notes" column="notes" />
+    </resultMap>
+
+    <select id="selectMoodLogById" resultMap="MoodLogResultMap">
+        SELECT * FROM mood_logs WHERE id = #{id}
+    </select>
+
+    <select id="selectMoodLogsByUserId" resultMap="MoodLogResultMap">
+        SELECT * FROM mood_logs WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insertMoodLog" parameterType="com.example.demo.model.MoodLog">
+        INSERT INTO mood_logs (user_id, mood, timestamp, notes)
+        VALUES (#{userId}, #{mood}, #{timestamp}, #{notes})
+    </insert>
+
+    <update id="updateMoodLog" parameterType="com.example.demo.model.MoodLog">
+        UPDATE mood_logs SET mood=#{mood}, timestamp=#{timestamp}, notes=#{notes} WHERE id=#{id}
+    </update>
+
+    <delete id="deleteMoodLog" parameterType="long">
+        DELETE FROM mood_logs WHERE id=#{id}
+    </delete>
+</mapper>
