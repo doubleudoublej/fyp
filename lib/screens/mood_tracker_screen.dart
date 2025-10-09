@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_navigation_bar.dart';
+import '../widgets/mood_calendar.dart';
 
 class MoodTrackerScreen extends StatefulWidget {
   const MoodTrackerScreen({super.key});
@@ -48,8 +49,11 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize to current month (August 2025)
-    currentDate = DateTime(2025, 8);
+    // Initialize to the device's current month
+    final now = DateTime.now();
+    currentDate = DateTime(now.year, now.month);
+    // Ensure selectedDate starts as today
+    selectedDate = DateTime(now.year, now.month, now.day);
     // Filter out any future mood data that might exist
     _filterPastMoodData();
   }
@@ -120,204 +124,7 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
     journalController.clear();
   }
 
-  Widget buildCalendar() {
-    final firstDayOfMonth = DateTime(currentDate.year, currentDate.month, 1);
-    final startCalendar = firstDayOfMonth.subtract(
-      Duration(days: firstDayOfMonth.weekday - 1),
-    );
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Month navigation
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    currentDate = DateTime(
-                      currentDate.year,
-                      currentDate.month - 1,
-                    );
-                  });
-                },
-                icon: const Icon(Icons.chevron_left, size: 28),
-              ),
-              Text(
-                "${_getMonthName(currentDate.month)}'${currentDate.year.toString().substring(2)}",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  final now = DateTime.now();
-                  final nextMonth = DateTime(
-                    currentDate.year,
-                    currentDate.month + 1,
-                  );
-
-                  // Only allow navigation to next month if it's not in the future
-                  if (nextMonth.year < now.year ||
-                      (nextMonth.year == now.year &&
-                          nextMonth.month <= now.month)) {
-                    setState(() {
-                      currentDate = nextMonth;
-                    });
-                  }
-                },
-                icon: Icon(
-                  Icons.chevron_right,
-                  size: 28,
-                  color: () {
-                    final now = DateTime.now();
-                    final nextMonth = DateTime(
-                      currentDate.year,
-                      currentDate.month + 1,
-                    );
-
-                    // Gray out the button if next month is in the future
-                    if (nextMonth.year > now.year ||
-                        (nextMonth.year == now.year &&
-                            nextMonth.month > now.month)) {
-                      return Colors.grey.withValues(alpha: 0.4);
-                    }
-                    return Colors.black;
-                  }(),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Week day headers
-          Row(
-            children: weekDays
-                .map(
-                  (day) => Expanded(
-                    child: Center(
-                      child: Text(
-                        day,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Calendar grid
-          ...List.generate(6, (weekIndex) {
-            return Row(
-              children: List.generate(7, (dayIndex) {
-                final date = startCalendar.add(
-                  Duration(days: weekIndex * 7 + dayIndex),
-                );
-                final isCurrentMonth = date.month == currentDate.month;
-                final isToday = _isSameDay(date, DateTime.now());
-                final isSelected = _isSameDay(date, selectedDate);
-                final isFuture = date.isAfter(DateTime.now());
-                final mood =
-                    moodData[DateTime(date.year, date.month, date.day)];
-
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: isCurrentMonth && !isFuture
-                        ? () {
-                            setState(() {
-                              selectedDate = date;
-                              // Load existing data for this date if available
-                              final existingEntry =
-                                  moodData[DateTime(
-                                    date.year,
-                                    date.month,
-                                    date.day,
-                                  )];
-                              if (existingEntry != null) {
-                                selectedMood = existingEntry['mood'] ?? '😊';
-                                journalController.text =
-                                    existingEntry['journal'] ?? '';
-                              } else {
-                                selectedMood = '😊';
-                                journalController.text = '';
-                              }
-                            });
-                          }
-                        : null,
-                    child: Container(
-                      height: 50,
-                      margin: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.blue.withValues(alpha: 0.5)
-                            : isToday
-                            ? Colors.blue.withValues(alpha: 0.3)
-                            : isCurrentMonth
-                            ? (mood != null
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : Colors.transparent)
-                            : Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: isSelected
-                            ? Border.all(color: Colors.blue, width: 2)
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            date.day.toString(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isFuture
-                                  ? Colors.grey.withValues(alpha: 0.5)
-                                  : isCurrentMonth
-                                  ? Colors.black
-                                  : Colors.grey,
-                              fontWeight: isToday
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          if (mood != null && isCurrentMonth)
-                            Text(
-                              mood['mood'],
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            );
-          }),
-        ],
-      ),
-    );
-  }
+  // buildCalendar moved to MoodCalendar widget
 
   Widget buildMoodSelector() {
     return Container(
@@ -397,7 +204,35 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
                 child: Column(
                   children: [
                     // Calendar
-                    buildCalendar(),
+                    MoodCalendar(
+                      currentMonth: currentDate,
+                      selectedDate: selectedDate,
+                      moodData: moodData,
+                      onDateSelected: (date) {
+                        setState(() {
+                          selectedDate = date;
+                          final existingEntry =
+                              moodData[DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                              )];
+                          if (existingEntry != null) {
+                            selectedMood = existingEntry['mood'] ?? '😊';
+                            journalController.text =
+                                existingEntry['journal'] ?? '';
+                          } else {
+                            selectedMood = '😊';
+                            journalController.text = '';
+                          }
+                        });
+                      },
+                      onMonthChanged: (month) {
+                        setState(() {
+                          currentDate = month;
+                        });
+                      },
+                    ),
 
                     const SizedBox(height: 20),
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../widgets/bottom_navigation_bar.dart';
+import '../widgets/article_card.dart';
+import 'topic_articles_screen.dart';
+// topic buttons are replaced by accordion list; topic_button import no longer needed
 
 class ArticlesScreen extends StatefulWidget {
   const ArticlesScreen({super.key});
@@ -172,7 +175,8 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                             itemCount: articles.length,
                             itemBuilder: (context, index) {
                               final article = articles[index];
-                              return GestureDetector(
+                              return ArticleCard(
+                                article: article,
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -183,100 +187,6 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
                                     ),
                                   );
                                 },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // Category tag
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFF7ED321,
-                                          ).withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          article['category']!,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF7ED321),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-
-                                      // Article title
-                                      Text(
-                                        article['title']!,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 8),
-
-                                      // Subtitle
-                                      Text(
-                                        article['subtitle']!,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black54,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const Spacer(),
-
-                                      // Author and read time
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.person_outline,
-                                            size: 16,
-                                            color: Colors.black45,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              article['author']!,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.black45,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Icon(
-                                            Icons.access_time,
-                                            size: 16,
-                                            color: Colors.black45,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            article['readTime']!,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.black45,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               );
                             },
                           ),
@@ -364,46 +274,37 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Mental Health Topic buttons in 2x2 grid - back to scrolling
-                    Expanded(
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 20,
-                        mainAxisSpacing: 20,
-                        children: [
-                          // Anxiety
-                          _buildTopicButton(
-                            'Anxiety',
-                            Icons.psychology_outlined,
-                            Colors.blue.withValues(alpha: 0.8),
-                            'Learn coping strategies and techniques for managing anxiety',
-                          ),
-
-                          // Depression
-                          _buildTopicButton(
-                            'Depression',
-                            Icons.favorite_outline,
-                            Colors.purple.withValues(alpha: 0.8),
-                            'Understanding depression and finding support resources',
-                          ),
-
-                          // Self-care
-                          _buildTopicButton(
-                            'Self-care',
-                            Icons.spa_outlined,
-                            Colors.green.withValues(alpha: 0.8),
-                            'Practical self-care tips for mental and physical wellbeing',
-                          ),
-
-                          // Relationships
-                          _buildTopicButton(
-                            'Relationships',
-                            Icons.people_outline,
-                            Colors.orange.withValues(alpha: 0.8),
-                            'Building healthy connections and communication skills',
-                          ),
-                        ],
-                      ),
+                    // Topics accordion: four headers, each expands to show three previews + '... more'
+                    ExpansionPanelList.radio(
+                      expandedHeaderPadding: EdgeInsets.zero,
+                      animationDuration: const Duration(milliseconds: 300),
+                      children: [
+                        _buildTopicPanel(
+                          'anxiety',
+                          'Anxiety',
+                          Icons.psychology_outlined,
+                          Colors.blue,
+                        ),
+                        _buildTopicPanel(
+                          'depression',
+                          'Depression',
+                          Icons.favorite_outline,
+                          Colors.purple,
+                        ),
+                        _buildTopicPanel(
+                          'selfcare',
+                          'Self-care',
+                          Icons.spa_outlined,
+                          Colors.green,
+                        ),
+                        _buildTopicPanel(
+                          'relationships',
+                          'Relationships',
+                          Icons.people_outline,
+                          Colors.orange,
+                        ),
+                      ],
+                      // ExpansionPanelList.radio manages single-expanded behavior
                     ),
                   ],
                 ),
@@ -418,72 +319,70 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
     );
   }
 
-  Widget _buildTopicButton(
+  ExpansionPanelRadio _buildTopicPanel(
+    String key,
     String title,
     IconData icon,
     Color color,
-    String description,
   ) {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Exploring $title resources...'),
-            backgroundColor: const Color(0xFF7ED321),
-            duration: const Duration(seconds: 2),
+    // gather three sample articles matching the topic by simple category contains test
+    final matches = articles
+        .where(
+          (a) => a['category']!.toLowerCase().contains(
+            title.toLowerCase().split('-').first,
           ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+        )
+        .toList();
+    final previews = matches.isEmpty
+        ? articles.take(3).toList()
+        : matches.take(3).toList();
+
+    return ExpansionPanelRadio(
+      value: key,
+      headerBuilder: (context, isExpanded) => ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+        leading: CircleAvatar(
+          backgroundColor: color,
+          child: Icon(icon, color: Colors.white),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 8, bottom: 12),
+        child: Column(
+          children: [
+            // three preview tiles
+            for (var article in previews)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  title: Text(article['title'] ?? ''),
+                  subtitle: Text(article['subtitle'] ?? ''),
+                  onTap: () {},
+                ),
+              ),
+            // more button
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TopicArticlesScreen(
+                        topicTitle: title,
+                        articles: matches.isEmpty ? articles : matches,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('... more'),
+              ),
             ),
           ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16), // Back to original padding
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 50, // Back to original size
-                height: 50, // Back to original size
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 24,
-                ), // Back to original size
-              ),
-              const SizedBox(height: 12), // Back to original spacing
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16, // Larger text
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8), // Back to original spacing
-              Text(
-                description,
-                style: const TextStyle(
-                  fontSize: 12, // Larger text
-                  color: Colors.black54,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 3, // More lines for longer descriptions
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
         ),
       ),
     );

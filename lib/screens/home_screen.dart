@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../widgets/forest_painter.dart';
 import '../widgets/bottom_navigation_bar.dart';
+import '../widgets/health_test_widget.dart';
+import '../widgets/weekly_progress_ring.dart';
+import '../widgets/weekly_summary_dialog.dart';
+import '../widgets/reward_dialog.dart';
+import '../widgets/task_card.dart';
+import '../widgets/points_badge.dart';
+import '../models/weekly_activities.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,14 +19,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _rewardAnimationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _rotationAnimation;
 
   // User progress data (this would normally come from a state management solution)
   int currentPoints = 1250; // From profile page
-  int progressCount = 7; // Out of 20 dots (7/20 = 35% progress)
   bool isRewardAvailable = false;
   bool isAnimating = false;
+
+  // Weekly challenge config
+  final int weeklyGoal = 500;
+  final List<int> milestones = [100, 200, 350, 500];
+
+  // Use sample data from model (replace with backend/real data later)
+  Map<int, List<Map<String, dynamic>>> get weeklyActivities =>
+      sampleWeeklyActivities;
+  int get _weeklyTotal => computeWeeklyTotal(weeklyActivities);
 
   @override
   void initState() {
@@ -34,26 +47,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(
-        parent: _rewardAnimationController,
-        curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
-      ),
-    );
-
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 2 * math.pi).animate(
-      CurvedAnimation(
-        parent: _rewardAnimationController,
-        curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
-      ),
-    );
+    // Reward animation controller is used as a timing mechanism when claiming a reward
+    // Specific scale/rotation animations were removed in favor of the new ring UI.
   }
 
   void _checkRewardStatus() {
-    // Check if progress is complete (20/20 dots filled)
+    // Check reward eligibility from weekly total
     setState(() {
-      isRewardAvailable = progressCount >= 20;
+      isRewardAvailable = _weeklyTotal >= weeklyGoal;
     });
+  }
+
+  void _addActivity(String desc, int points) {
+    // Add an activity for today and update points and reward status
+    final int weekday = DateTime.now().weekday; // 1 = Monday .. 7 = Sunday
+    sampleWeeklyActivities.putIfAbsent(weekday, () => []);
+    sampleWeeklyActivities[weekday]!.add({'desc': desc, 'points': points});
+    currentPoints += points;
+    _checkRewardStatus();
+  }
+
+  // Weekday label removed — center label now shows the weekly TARGET
+
+  void _showWeeklySummaryDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => WeeklySummaryDialog(
+        weeklyActivities: weeklyActivities,
+        weeklyTotal: _weeklyTotal,
+      ),
+    );
   }
 
   void _claimReward() async {
@@ -75,7 +98,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _rewardAnimationController.reset();
 
     setState(() {
-      progressCount = 0;
+      // clear weekly activities (reset progress) and award bonus
+      sampleWeeklyActivities.updateAll(
+        (key, value) => <Map<String, dynamic>>[],
+      );
       currentPoints += 100; // Bonus points for completing the circle
       isRewardAvailable = false;
       isAnimating = false;
@@ -86,126 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Animated present icon
-                TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 1000),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 0.5 + (value * 0.5),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7ED321),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF7ED321,
-                              ).withValues(alpha: 0.4),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.card_giftcard,
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                const Text(
-                  '🎉 Congratulations! 🎉',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF7ED321),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 12),
-
-                const Text(
-                  'You\'ve completed your wellness circle!',
-                  style: TextStyle(fontSize: 16, color: Colors.black87),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 8),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: const Text(
-                    '+100 Bonus Points!',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFD700),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7ED321),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 30,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: const Text(
-                    'Awesome!',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (_) => const RewardDialog(pointsAwarded: 100),
     );
   }
 
@@ -251,6 +158,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           const SizedBox(height: 40),
+                          // Health test button (for quick API smoke tests)
+                          if (kDebugMode) const HealthTestWidget(),
 
                           // Progress Circle with animated present
                           GestureDetector(
@@ -264,129 +173,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: Stack(
                                     alignment: Alignment.center,
                                     children: [
-                                      // Progress ring background
-                                      CustomPaint(
-                                        size: const Size(200, 200),
-                                        painter: CirclePainter(),
+                                      // New gradient progress ring (animated)
+                                      // Use reusable WeeklyProgressRing widget
+                                      WeeklyProgressRing(
+                                        size: 200,
+                                        weeklyGoal: weeklyGoal,
+                                        weeklyTotal: _weeklyTotal,
+                                        milestones: milestones,
+                                        strokeWidth: 30,
+                                        onCenterTap: _showWeeklySummaryDialog,
+                                        centerLabel: 'TARGET',
                                       ),
-                                      // Present icon (animated when reward is available)
-                                      Transform.scale(
-                                        scale: isAnimating
-                                            ? _scaleAnimation.value
-                                            : (isRewardAvailable ? 1.1 : 1.0),
-                                        child: Transform.rotate(
-                                          angle: isAnimating
-                                              ? _rotationAnimation.value
-                                              : 0.0,
-                                          child: Container(
-                                            width: 60,
-                                            height: 60,
-                                            decoration: BoxDecoration(
-                                              color: isRewardAvailable
-                                                  ? const Color(
-                                                      0xFFFFD700,
-                                                    ) // Gold when ready
-                                                  : Colors.orange,
-                                              shape: BoxShape.circle,
-                                              boxShadow: isRewardAvailable
-                                                  ? [
-                                                      BoxShadow(
-                                                        color:
-                                                            const Color(
-                                                              0xFFFFD700,
-                                                            ).withValues(
-                                                              alpha: 0.5,
-                                                            ),
-                                                        blurRadius: 15,
-                                                        spreadRadius: 3,
-                                                      ),
-                                                    ]
-                                                  : [],
-                                            ),
-                                            child: Icon(
-                                              Icons.card_giftcard,
-                                              color: Colors.white,
-                                              size: isRewardAvailable ? 35 : 30,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Progress dots
-                                      ...List.generate(20, (index) {
-                                        final angle =
-                                            (index * 18.0) * math.pi / 180;
-                                        final radius = 90.0;
-                                        final x = radius * math.cos(angle);
-                                        final y = radius * math.sin(angle);
 
-                                        return Positioned(
-                                          left: 100 + x - 6,
-                                          top: 100 + y - 6,
-                                          child: Container(
-                                            width: 12,
-                                            height: 12,
-                                            decoration: BoxDecoration(
-                                              color: index < progressCount
-                                                  ? const Color(0xFFFFD700)
-                                                  : Colors.grey.withValues(
-                                                      alpha: 0.3,
-                                                    ),
-                                              shape: BoxShape.circle,
-                                              boxShadow: index < progressCount
-                                                  ? [
-                                                      BoxShadow(
-                                                        color:
-                                                            const Color(
-                                                              0xFFFFD700,
-                                                            ).withValues(
-                                                              alpha: 0.5,
-                                                            ),
-                                                        blurRadius: 4,
-                                                        spreadRadius: 1,
-                                                      ),
-                                                    ]
-                                                  : [],
-                                            ),
-                                          ),
-                                        );
-                                      }),
-                                      // Progress indicator text
-                                      if (!isRewardAvailable)
-                                        Positioned(
-                                          bottom: -10,
-                                          child: Text(
-                                            '$progressCount/20',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      // "Tap to claim" text when reward is ready
-                                      if (isRewardAvailable && !isAnimating)
-                                        Positioned(
-                                          bottom: -10,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFFFD700),
-                                              borderRadius:
-                                                  BorderRadius.circular(15),
-                                            ),
-                                            child: const Text(
-                                              'Tap to claim!',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                      // Milestones and center are now rendered by WeeklyProgressRing
                                     ],
                                   ),
                                 );
@@ -395,43 +194,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
 
                           const SizedBox(height: 20),
-                          // Updated points display
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(25),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Color(0xFFFFD700),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '$currentPoints Wellness Points',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF7ED321),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          // Updated points display (extracted)
+                          PointsBadge(points: currentPoints),
                         ],
                       ),
                     ),
@@ -451,237 +215,61 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       child: Column(
                         children: [
-                          // Task 1 Card
-                          GestureDetector(
+                          TaskCard(
+                            title: 'Daily Mood Check',
+                            subtitle:
+                                'Complete your daily mood tracker to earn wellness points.',
+                            icon: Icons.mood,
+                            iconColor: const Color(0xFF7ED321),
+                            pointsLabel: '50 points',
+                            highlighted: isRewardAvailable,
                             onTap: () {
-                              // Simulate task completion
-                              setState(() {
-                                if (progressCount < 20) {
-                                  progressCount++;
-                                  currentPoints += 50;
-                                  _checkRewardStatus();
-                                }
-                              });
-
-                              // Show completion feedback
+                              _addActivity('Daily Mood Check', 50);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text(
-                                    'Task completed! +50 points',
-                                  ),
-                                  backgroundColor: const Color(0xFF7ED321),
-                                  duration: const Duration(seconds: 2),
+                                const SnackBar(
+                                  content: Text('Task completed! +50 points'),
+                                  backgroundColor: Color(0xFF7ED321),
+                                  duration: Duration(seconds: 2),
                                 ),
                               );
                             },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: progressCount >= 20
-                                      ? const Color(0xFFFFD700)
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF7ED321),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.mood,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Text(
-                                          'Daily Mood Check',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          '50 points',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.orange,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Complete your daily mood tracker to earn wellness points.',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ),
 
-                          // Task 2 Card
-                          GestureDetector(
+                          TaskCard(
+                            title: 'Read Article',
+                            subtitle:
+                                'Read a mental health article to expand your knowledge.',
+                            icon: Icons.menu_book,
+                            iconColor: Colors.blue,
+                            pointsLabel: '20 points',
+                            highlighted: isRewardAvailable,
                             onTap: () {
-                              // Simulate task completion
-                              setState(() {
-                                if (progressCount < 20) {
-                                  progressCount++;
-                                  currentPoints += 20;
-                                  _checkRewardStatus();
-                                }
-                              });
-
-                              // Show completion feedback
+                              _addActivity('Read Article', 20);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text(
-                                    'Article read! +20 points',
-                                  ),
+                                const SnackBar(
+                                  content: Text('Article read! +20 points'),
                                   backgroundColor: Colors.blue,
-                                  duration: const Duration(seconds: 2),
+                                  duration: Duration(seconds: 2),
                                 ),
                               );
                             },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: progressCount >= 20
-                                      ? const Color(0xFFFFD700)
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.menu_book,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Text(
-                                          'Read Article',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          '20 points',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Read a mental health article to expand your knowledge.',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ),
 
                           // Test button for quick progress (only in development)
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () {
-                              setState(() {
-                                progressCount = 20; // Fill the circle instantly
-                                _checkRewardStatus();
-                              });
+                              // Add just enough points to reach the weekly goal for testing
+                              final int remaining = weeklyGoal - _weeklyTotal;
+                              if (remaining > 0) {
+                                _addActivity('Test fill', remaining);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Filled progress for test'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFFD700),
@@ -707,23 +295,4 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-}
-
-class CirclePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.1)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      size.width / 2 - 10,
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

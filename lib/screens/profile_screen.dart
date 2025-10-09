@@ -1,12 +1,96 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_navigation_bar.dart';
 import 'mood_tracker_screen.dart';
+import '../widgets/mood_calendar.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late DateTime currentDate;
+  late DateTime selectedDate;
+  // keep a small mood/marker map; profile uses appointment marker optionally
+  Map<DateTime, Map<String, dynamic>> moodData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    currentDate = DateTime(now.year, now.month);
+    selectedDate = DateTime(now.year, now.month, now.day);
+    // Example: if you want to mark an appointment day in the calendar, add it here
+    // Example appointment so the calendar shows an orange marker.
+    // Add a fixed appointment on December 03, 2025 to be shown in Next Appointment
+    moodData[DateTime(2025, 12, 3)] = {
+      'mood': '📅',
+      'appointment': true,
+      'notes': 'Video call with Dr. Tan',
+      'time': '2:30 PM - 3:30 PM',
+      'title': 'Dr. Peter Tan',
+    };
+  }
+
+  // Returns the next appointment DateTime and its data map, or null if none
+  MapEntry<DateTime, Map<String, dynamic>>? _getNextAppointment() {
+    final now = DateTime.now();
+    final futureAppointments = moodData.entries.where((e) {
+      final d = e.key;
+      final map = e.value;
+      final isAppt = map['appointment'] == true || map['mood'] == '📅';
+      return isAppt &&
+          DateTime(
+            d.year,
+            d.month,
+            d.day,
+          ).isAfter(DateTime(now.year, now.month, now.day - 1));
+    }).toList();
+
+    if (futureAppointments.isEmpty) return null;
+
+    futureAppointments.sort((a, b) => a.key.compareTo(b.key));
+    return futureAppointments.first;
+  }
+
+  String _formatDate(DateTime d) {
+    final weekdays = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    final months = [
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    final wd = weekdays[d.weekday % 7];
+    final m = months[d.month];
+    final day = d.day.toString().padLeft(2, '0');
+    final year = d.year;
+    return '$wd, $m $day, $year';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Today's date is available via state (selectedDate/currentDate) when needed
     return Scaffold(
       backgroundColor: const Color(0xFF7ED321), // Same green background
       body: SafeArea(
@@ -299,15 +383,15 @@ class ProfileScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.calendar_today,
                                   color: Color(0xFF7ED321),
                                   size: 24,
                                 ),
-                                SizedBox(width: 12),
-                                Text(
+                                const SizedBox(width: 12),
+                                const Text(
                                   'Next Appointment',
                                   style: TextStyle(
                                     fontSize: 18,
@@ -318,209 +402,113 @@ class ProfileScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF7ED321,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Dr. Peter Tan',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
+                            Builder(
+                              builder: (context) {
+                                final entry = _getNextAppointment();
+                                if (entry == null) {
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF7ED321,
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Tuesday, August 20, 2025',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
+                                    child: const Text(
+                                      'No upcoming appointments',
+                                      style: TextStyle(color: Colors.black54),
                                     ),
+                                  );
+                                }
+
+                                final date = entry.key;
+                                final data = entry.value;
+                                final title = data['title'] ?? 'Appointment';
+                                final time = data['time'] ?? '';
+                                final notes = data['notes'] ?? '';
+
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF7ED321,
+                                    ).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  Text(
-                                    '2:30 PM - 3:30 PM',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        title,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _formatDate(date),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                      if (time.isNotEmpty)
+                                        Text(
+                                          time,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      if (notes.isNotEmpty)
+                                        const SizedBox(height: 8),
+                                      if (notes.isNotEmpty)
+                                        Text(
+                                          notes,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF7ED321),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Video Call Session',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF7ED321),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                );
+                              },
                             ),
                           ],
                         ),
                       ),
 
-                      // Calendar Widget
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Calendar Header
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF7ED321),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  topRight: Radius.circular(16),
-                                ),
-                              ),
-                              child: const Text(
-                                'August 2025',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                      // Calendar Widget (now extracted)
+                      MoodCalendar(
+                        currentMonth: currentDate,
+                        selectedDate: selectedDate,
+                        moodData: moodData,
+                        onDateSelected: (date) {
+                          setState(() {
+                            selectedDate = date;
+                          });
+                        },
+                        onMonthChanged: (month) {
+                          setState(() {
+                            currentDate = month;
+                          });
+                        },
+                      ),
 
-                            // Calendar Grid
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  // Day headers
-                                  Row(
-                                    children:
-                                        [
-                                              'Sun',
-                                              'Mon',
-                                              'Tue',
-                                              'Wed',
-                                              'Thu',
-                                              'Fri',
-                                              'Sat',
-                                            ]
-                                            .map(
-                                              (day) => Expanded(
-                                                child: Text(
-                                                  day,
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black54,
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                  ),
-                                  const SizedBox(height: 12),
-
-                                  // Calendar days
-                                  ...List.generate(5, (weekIndex) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: Row(
-                                        children: List.generate(7, (dayIndex) {
-                                          final dayNumber =
-                                              weekIndex * 7 +
-                                              dayIndex -
-                                              3; // Offset for August 2025
-                                          final isValidDay =
-                                              dayNumber > 0 && dayNumber <= 31;
-                                          final isToday =
-                                              dayNumber == 15; // Today
-                                          final hasAppointment =
-                                              dayNumber ==
-                                              20; // Appointment day
-
-                                          return Expanded(
-                                            child: Container(
-                                              height: 32,
-                                              margin: const EdgeInsets.all(1),
-                                              decoration: BoxDecoration(
-                                                color: isToday
-                                                    ? const Color(0xFF7ED321)
-                                                    : hasAppointment
-                                                    ? Colors.orange
-                                                    : Colors.transparent,
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              child: Center(
-                                                child: isValidDay
-                                                    ? Text(
-                                                        dayNumber.toString(),
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              isToday ||
-                                                                  hasAppointment
-                                                              ? FontWeight.bold
-                                                              : FontWeight
-                                                                    .normal,
-                                                          color:
-                                                              isToday ||
-                                                                  hasAppointment
-                                                              ? Colors.white
-                                                              : Colors.black87,
-                                                        ),
-                                                      )
-                                                    : null,
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                      ),
-                                    );
-                                  }),
-
-                                  // Legend
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      _buildLegendItem(
-                                        const Color(0xFF7ED321),
-                                        'Today',
-                                      ),
-                                      const SizedBox(width: 16),
-                                      _buildLegendItem(
-                                        Colors.orange,
-                                        'Appointment',
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                      const SizedBox(height: 8),
+                      // Legend
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildLegendItem(const Color(0xFF7ED321), 'Today'),
+                          const SizedBox(width: 16),
+                          _buildLegendItem(Colors.orange, 'Appointment'),
+                        ],
                       ),
                     ],
                   ),
