@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'article_detail_screen.dart';
 
 class TopicArticlesScreen extends StatefulWidget {
   final String topicTitle;
@@ -52,7 +53,7 @@ class _TopicArticlesScreenState extends State<TopicArticlesScreen> {
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: _items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final article = _items[index];
           return ListTile(
@@ -62,7 +63,16 @@ class _TopicArticlesScreenState extends State<TopicArticlesScreen> {
             ),
             title: Text(article['title'] ?? ''),
             subtitle: Text(article['subtitle'] ?? ''),
-            onTap: () {},
+            onTap: () {
+              final id = article['id'];
+              if (id != null && id.isNotEmpty) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ArticleDetailScreen(articleId: id),
+                  ),
+                );
+              }
+            },
           );
         },
       ),

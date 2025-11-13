@@ -1,4 +1,14 @@
+// Web-only recording helpers are used when running on the web.
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
+
+// The following import is only used on web. Guarded at runtime with kIsWeb.
+import 'dart:html' as html;
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/storage_service.dart';
 
 class VoicePage extends StatefulWidget {
   const VoicePage({super.key});
@@ -13,6 +23,20 @@ class _VoicePageState extends State<VoicePage> with TickerProviderStateMixin {
   late AnimationController _giftController;
   late Animation<double> _giftFallAnimation;
   late Animation<double> _giftOpenAnimation;
+
+  // Web-specific recording state (kept here so the UI/design isn't changed)
+  html.MediaRecorder? _recorder;
+  html.MediaStream? _stream;
+  final List<html.Blob> _chunks = [];
+  String? _lastBlobUrl;
+  String? _lastUploadedUrl;
+  bool _isUploading = false;
+  // Playback state
+  html.AudioElement? _player;
+  bool _isPlayingAudio = false;
+  final StorageService _storageService = StorageService(
+    storageBucket: 'gs://fyp-mha.firebasestorage.app',
+  );
 
   @override
   void initState() {
@@ -40,28 +64,279 @@ class _VoicePageState extends State<VoicePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _giftController.dispose();
+    // stop any active recorder stream
+    try {
+      _stream?.getTracks().forEach((t) => t.stop());
+    } catch (_) {}
+    // stop and remove player
+    try {
+      _player?.pause();
+      _player?.remove();
+    } catch (_) {}
     super.dispose();
   }
 
-  void startRecording() {
-    setState(() {
-      isRecording = true;
-    });
+  /// Start recording using browser MediaRecorder (Web only). Keeps the
+  /// existing UI/animation but replaces the mock timer with a real microphone
+  /// prompt and upload flow. On non-web platforms it shows a friendly
+  /// message that recording is not implemented.
+  Future<void> startRecording() async {
+    if (!kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Recording is currently implemented for Web only.'),
+        ),
+      );
+      return;
+    }
 
-    // Mock recording for 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // Log to console so we can see the handler was fired in browser tools.
+      try {
+        html.window.console.log('VoicePage: startRecording invoked');
+      } catch (_) {}
+
       if (mounted) {
-        setState(() {
-          isRecording = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Voice message recorded! 🎤'),
-            backgroundColor: Colors.green,
-          ),
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Requesting microphone access...')),
         );
       }
-    });
+
+      if (html.window.navigator.mediaDevices == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Browser does not support getUserMedia / MediaDevices.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final media = await html.window.navigator.mediaDevices!.getUserMedia({
+        'audio': true,
+      });
+
+      _stream = media;
+      _chunks.clear();
+
+      _recorder = html.MediaRecorder(_stream!);
+      _recorder!.addEventListener('dataavailable', (e) {
+        try {
+          final data = (e as dynamic).data as html.Blob?;
+          if (data != null) _chunks.add(data);
+        } catch (_) {}
+      });
+
+      _recorder!.addEventListener('stop', (event) async {
+        final messenger = ScaffoldMessenger.of(context);
+        final mountedNow = mounted;
+
+        final blob = html.Blob(_chunks);
+        try {
+          if (_lastBlobUrl != null) {
+            try {
+              html.Url.revokeObjectUrl(_lastBlobUrl!);
+            } catch (_) {}
+          }
+          final blobUrl = html.Url.createObjectUrl(blob);
+          _lastBlobUrl = blobUrl;
+        } catch (_) {}
+
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(blob);
+        await reader.onLoad.first;
+        final res = reader.result;
+        Uint8List bytes;
+        if (res is ByteBuffer) {
+          bytes = res.asUint8List();
+        } else if (res is Uint8List) {
+          bytes = res;
+        } else if (res is List) {
+          bytes = Uint8List.fromList(List<int>.from(res));
+        } else {
+          if (mountedNow) {
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Unsupported recorder result: ${res.runtimeType}',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Ensure authenticated (attempt anonymous if not): many Storage rules
+        // require auth.
+        final auth = FirebaseAuth.instance;
+        if (auth.currentUser == null) {
+          try {
+            await auth.signInAnonymously();
+            try {
+              html.window.console.log(
+                'Signed in anonymously: ${auth.currentUser?.uid}',
+              );
+            } catch (_) {}
+          } catch (e) {
+            if (mountedNow) {
+              messenger.showSnackBar(
+                SnackBar(content: Text('Unable to sign in anonymously: $e')),
+              );
+            }
+          }
+        }
+
+        if (mountedNow) setState(() => _isUploading = true);
+        final ext = _inferExtensionFromMime(blob.type) ?? '.webm';
+        final filename =
+            'forum_audios/${DateTime.now().millisecondsSinceEpoch}$ext';
+        try {
+          try {
+            html.window.console.log(
+              'VoicePage: uploading $filename size=${bytes.length}',
+            );
+          } catch (_) {}
+          final url = await _storageService.uploadBytes(
+            filename,
+            bytes,
+            contentType: blob.type.isNotEmpty ? blob.type : 'audio/webm',
+          );
+          if (mountedNow) {
+            setState(() => _lastUploadedUrl = url);
+            messenger.showSnackBar(
+              const SnackBar(content: Text('Uploaded audio successfully')),
+            );
+          }
+        } catch (e) {
+          if (mountedNow) {
+            messenger.showSnackBar(
+              SnackBar(content: Text('Upload failed: $e')),
+            );
+          }
+        } finally {
+          if (mountedNow) setState(() => _isUploading = false);
+        }
+      });
+
+      _recorder!.start();
+      setState(() => isRecording = true);
+    } catch (e) {
+      String msg = 'Could not start recording';
+      try {
+        final name = (e as dynamic).name as String?;
+        if (name != null) {
+          if (name == 'NotAllowedError' || name == 'SecurityError') {
+            msg = 'Microphone access was denied by the user or browser.';
+          } else if (name == 'NotFoundError') {
+            msg = 'No microphone found on this device.';
+          } else {
+            msg = '$msg: $name';
+          }
+        } else {
+          msg = '$msg: $e';
+        }
+      } catch (_) {
+        msg = '$msg: $e';
+      }
+
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
+      try {
+        html.window.console.log('VoicePage recording error: $e');
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _stopStreamTracks() async {
+    try {
+      _stream?.getTracks().forEach((t) => t.stop());
+    } catch (_) {}
+    _stream = null;
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      _recorder?.stop();
+    } catch (_) {}
+    await _stopStreamTracks();
+    if (mounted) setState(() => isRecording = false);
+  }
+
+  String? _inferExtensionFromMime(String mime) {
+    if (mime.contains('webm')) return '.webm';
+    if (mime.contains('ogg')) return '.ogg';
+    if (mime.contains('mpeg') || mime.contains('mp3')) return '.mp3';
+    return null;
+  }
+
+  Future<void> _playRandomAudio() async {
+    // If already playing, stop and clean up instead of starting another clip.
+    if (_player != null && _isPlayingAudio) {
+      try {
+        _player?.pause();
+        _player?.currentTime = 0;
+        _player?.remove();
+      } catch (_) {}
+      setState(() {
+        _player = null;
+        _isPlayingAudio = false;
+      });
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    if (!kIsWeb) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Playback implemented for Web only in this demo.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isUploading = true);
+    try {
+      final url = await _storageService.getRandomFileDownloadUrl(
+        'forum_audios',
+      );
+      if (url == null) {
+        if (mounted)
+          messenger.showSnackBar(
+            const SnackBar(content: Text('No audio files found')),
+          );
+        return;
+      }
+      // Trigger the gift animation together with playback for a nicer UX.
+      try {
+        // Only trigger if not already animating
+        if (!isGiftAnimating) triggerGiftDrop();
+      } catch (_) {}
+
+      final player = html.AudioElement(url)..autoplay = true;
+      player.onEnded.listen((_) {
+        try {
+          player.remove();
+        } catch (_) {}
+        if (mounted)
+          setState(() {
+            _player = null;
+            _isPlayingAudio = false;
+          });
+      });
+      // store player and mark playing state so UI can update
+      setState(() {
+        _player = player;
+        _isPlayingAudio = true;
+      });
+    } catch (e) {
+      if (mounted)
+        messenger.showSnackBar(SnackBar(content: Text('Play failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   void triggerGiftDrop() {
@@ -200,7 +475,8 @@ class _VoicePageState extends State<VoicePage> with TickerProviderStateMixin {
               // Record button
               Expanded(
                 child: GestureDetector(
-                  onTap: isRecording ? null : startRecording,
+                  // Toggle recording: start when idle, stop when recording.
+                  onTap: isRecording ? _stopRecording : startRecording,
                   child: Container(
                     height: 60,
                     margin: const EdgeInsets.only(right: 10),
@@ -245,12 +521,18 @@ class _VoicePageState extends State<VoicePage> with TickerProviderStateMixin {
               // Get button
               Expanded(
                 child: GestureDetector(
-                  onTap: isGiftAnimating ? null : triggerGiftDrop,
+                  // Changed to fetch & play a random audio clip from Storage.
+                  // Allow stopping even while not disabled by uploading.
+                  onTap: (_isUploading && !_isPlayingAudio)
+                      ? null
+                      : _playRandomAudio,
                   child: Container(
                     height: 60,
                     margin: const EdgeInsets.only(left: 10),
                     decoration: BoxDecoration(
-                      color: isGiftAnimating
+                      color: _isPlayingAudio
+                          ? Colors.red.withValues(alpha: 0.8)
+                          : isGiftAnimating
                           ? Colors.grey.withValues(alpha: 0.5)
                           : Colors.grey.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(12),
@@ -267,15 +549,19 @@ class _VoicePageState extends State<VoicePage> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            isGiftAnimating
-                                ? Icons.hourglass_empty
-                                : Icons.card_giftcard,
+                            _isPlayingAudio
+                                ? Icons.stop
+                                : (isGiftAnimating
+                                      ? Icons.hourglass_empty
+                                      : Icons.card_giftcard),
                             color: Colors.white,
                             size: 24,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            isGiftAnimating ? 'Getting...' : 'Get',
+                            _isPlayingAudio
+                                ? 'Stop'
+                                : (isGiftAnimating ? 'Getting...' : 'Get'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -291,6 +577,18 @@ class _VoicePageState extends State<VoicePage> with TickerProviderStateMixin {
             ],
           ),
 
+          const SizedBox(height: 12),
+          // Show last uploaded URL for convenience (if any)
+          if (_lastUploadedUrl != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SelectableText(
+                'Last uploaded: ${_lastUploadedUrl!}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
         ],
       ),

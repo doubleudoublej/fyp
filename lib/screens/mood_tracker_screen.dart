@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../widgets/bottom_navigation_bar.dart';
 import '../widgets/mood_calendar.dart';
+import '../services/database_service.dart';
+import '../services/auth_service.dart';
+import 'sign_in_screen.dart';
 
 class MoodTrackerScreen extends StatefulWidget {
   const MoodTrackerScreen({super.key});
@@ -37,12 +44,20 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
     DateTime(2025, 8, 15): {'mood': '😊', 'journal': 'Today feels good'},
   };
 
+  final AuthService _authService = AuthService();
+  final DatabaseService _db = DatabaseService();
+
+  StreamSubscription? _moodsSub;
+  StreamSubscription<User?>? _authSub;
+
   List<String> moodEmojis = ['😊', '😐', '😔', '😍', '😤', '😱', '🤮'];
   List<String> weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   @override
   void dispose() {
     journalController.dispose();
+    _moodsSub?.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 
@@ -56,6 +71,50 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
     selectedDate = DateTime(now.year, now.month, now.day);
     // Filter out any future mood data that might exist
     _filterPastMoodData();
+
+    // Listen for auth changes and attach realtime DB listener when signed in
+    _authSub = _authService.authStateChanges().listen((user) {
+      if (user != null) {
+        _startListeningMoods(user.uid);
+      } else {
+        _moodsSub?.cancel();
+        setState(() {
+          moodData.clear();
+        });
+      }
+    });
+
+    // If already signed in, start listening
+    final current = _authService.currentUser;
+    if (current != null) {
+      _startListeningMoods(current.uid);
+    }
+  }
+
+  void _startListeningMoods(String uid) {
+    _moodsSub?.cancel();
+    _moodsSub = _db.onValue('moods/$uid').listen((event) {
+      final raw = event.snapshot.value;
+      if (raw == null) {
+        setState(() => moodData.clear());
+        return;
+      }
+
+      // raw expected to be Map<String, dynamic> where keys are yyyy-MM-dd
+      if (raw is Map) {
+        final Map<DateTime, Map<String, dynamic>> parsed = {};
+        raw.forEach((k, v) {
+          try {
+            final dt = DateTime.parse(k.toString());
+            if (v is Map) {
+              parsed[DateTime(dt.year, dt.month, dt.day)] =
+                  Map<String, dynamic>.from(v);
+            }
+          } catch (_) {}
+        });
+        setState(() => moodData = parsed);
+      }
+    });
   }
 
   // Method to ensure only past and current mood data is kept
@@ -67,7 +126,7 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
     moodData.removeWhere((date, data) => date.isAfter(today));
   }
 
-  void saveMoodEntry() {
+  Future<void> saveMoodEntry() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -94,34 +153,52 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
       );
       return;
     }
-
     final entryDate = DateTime(
       selectedDate.year,
       selectedDate.month,
       selectedDate.day,
     );
 
-    setState(() {
-      moodData[entryDate] = {
-        'mood': selectedMood,
-        'journal': journalController.text.trim(),
-      };
-    });
+    final user = _authService.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to save mood entries.')),
+      );
+      return;
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          entryDate.isAtSameMomentAs(today)
-              ? 'Today\'s mood entry saved!'
-              : 'Mood entry saved for ${_formatShortDate(entryDate)}!',
+    final key =
+        '${entryDate.year.toString().padLeft(4, '0')}-${entryDate.month.toString().padLeft(2, '0')}-${entryDate.day.toString().padLeft(2, '0')}';
+    final path = 'moods/${user.uid}/$key';
+    final data = {
+      'mood': selectedMood,
+      'journal': journalController.text.trim(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      await _db.set(path: path, data: data);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            entryDate.isAtSameMomentAs(today)
+                ? 'Today\'s mood entry saved!'
+                : 'Mood entry saved for ${_formatShortDate(entryDate)}!',
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
         ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
 
-    // Clear journal input after saving
-    journalController.clear();
+      // Clear journal input after saving
+      journalController.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+    }
   }
 
   // buildCalendar moved to MoodCalendar widget
@@ -134,10 +211,12 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
         children: moodEmojis.map((emoji) {
           final isSelected = selectedMood == emoji;
           return GestureDetector(
-            onTap: () {
+            onTap: () async {
               setState(() {
                 selectedMood = emoji;
               });
+              // Save immediately when user taps an emoji below the calendar.
+              await saveMoodEntry();
             },
             child: Container(
               width: 50,
@@ -194,6 +273,57 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
                       color: Colors.black,
                     ),
                   ),
+                  const Spacer(),
+                  // Sign-in/out button
+                  Builder(
+                    builder: (ctx) {
+                      final user = _authService.currentUser;
+                      if (user == null) {
+                        return IconButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SignInScreen(),
+                            ),
+                          ),
+                          icon: const Icon(Icons.login, color: Colors.black),
+                        );
+                      } else {
+                        return GestureDetector(
+                          onTap: () async {
+                            final confirm = await showDialog<bool>(
+                              context: ctx,
+                              builder: (dctx) => AlertDialog(
+                                title: const Text('Sign out?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(dctx).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(dctx).pop(true),
+                                    child: const Text('Sign out'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await _authService.signOut();
+                            }
+                          },
+                          child: CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: Text(
+                              user.displayName?.substring(0, 1).toUpperCase() ??
+                                  'U',
+                              style: const TextStyle(color: Colors.black),
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
@@ -236,55 +366,66 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Selected date mood section
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.pink.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            selectedFormattedDate,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                    // Selected date mood section (tap this area to save the current
+                    // selected mood for the selected date; long-press to edit)
+                    GestureDetector(
+                      onTap: () => saveMoodEntry(),
+                      onLongPress: () {
+                        // Open calendar dialog editor via long-press. We can open the
+                        // MoodCalendar editor by using the calendar's long-press
+                        // functionality — parent already updates selectedDate when a
+                        // date is selected. For quick access, do nothing here; long-
+                        // press on the calendar cell opens the editor.
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.pink.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selectedFormattedDate,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Text(
-                                'Feeling',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black,
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Text(
+                                  'Feeling',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                selectedMood,
-                                style: const TextStyle(fontSize: 24),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Mood selector
-                          const Text(
-                            'How are you feeling today?',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black,
+                                const SizedBox(width: 8),
+                                Text(
+                                  selectedMood,
+                                  style: const TextStyle(fontSize: 24),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                            const SizedBox(height: 16),
+
+                            // Mood selector
+                            const Text(
+                              'How are you feeling today?',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
                       ),
                     ),
 

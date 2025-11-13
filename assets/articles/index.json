@@ -1,0 +1,98 @@
+[
+  {
+    "id": "stress-1",
+    "title": "When Everything Feels Urgent: Understanding Everyday Stress",
+    "subtitle": "How to recognise early signs of stress before it snowballs",
+    "author": "MindWell Team",
+    "readTime": "4 min",
+    "category": "stress"
+  },
+  {
+    "id": "stress-2",
+    "title": "Small Breaks, Big Difference",
+    "subtitle": "Micro-habits to recharge during a busy university day",
+    "author": "MindWell Team",
+    "readTime": "5 min",
+    "category": "stress"
+  },
+  {
+    "id": "stress-3",
+    "title": "Setting Boundaries Without Feeling Guilty",
+    "subtitle": "Learning to say no while still caring for others",
+    "author": "MindWell Team",
+    "readTime": "6 min",
+    "category": "stress"
+  },
+  {
+    "id": "depression-1",
+    "title": "When Motivation Disappears",
+    "subtitle": "Understanding low mood and the myth of laziness",
+    "author": "MindWell Team",
+    "readTime": "5 min",
+    "category": "depression"
+  },
+  {
+    "id": "depression-2",
+    "title": "Tiny Wins on Heavy Days",
+    "subtitle": "How to shrink your to-do list when life feels too much",
+    "author": "MindWell Team",
+    "readTime": "5 min",
+    "category": "depression"
+  },
+  {
+    "id": "depression-3",
+    "title": "You Don’t Have to Go Through This Alone",
+    "subtitle": "Reaching out for support in a way that feels safe",
+    "author": "MindWell Team",
+    "readTime": "6 min",
+    "category": "depression"
+  },
+  {
+    "id": "anxiety-1",
+    "title": "Why Your Brain Won’t Stop Overthinking",
+    "subtitle": "A gentle explanation of worry, fear and ‘what ifs’",
+    "author": "MindWell Team",
+    "readTime": "5 min",
+    "category": "anxiety"
+  },
+  {
+    "id": "anxiety-2",
+    "title": "Grounding Yourself in the Present Moment",
+    "subtitle": "Simple techniques to calm your body when anxiety spikes",
+    "author": "MindWell Team",
+    "readTime": "5 min",
+    "category": "anxiety"
+  },
+  {
+    "id": "anxiety-3",
+    "title": "Exam Anxiety: Managing the Pressure to Perform",
+    "subtitle": "Practical steps to cope before and during exams",
+    "author": "MindWell Team",
+    "readTime": "6 min",
+    "category": "anxiety"
+  },
+  {
+    "id": "relationship-1",
+    "title": "Feeling Lonely Even When You’re Not Alone",
+    "subtitle": "Why connection can feel hard and what you can do about it",
+    "author": "MindWell Team",
+    "readTime": "5 min",
+    "category": "relationship"
+  },
+  {
+    "id": "relationship-2",
+    "title": "Communicating Feelings Without Starting a Fight",
+    "subtitle": "Using ‘I’ statements and curiosity instead of blame",
+    "author": "MindWell Team",
+    "readTime": "6 min",
+    "category": "relationship"
+  },
+  {
+    "id": "relationship-3",
+    "title": "When It’s Time to Protect Your Emotional Space",
+    "subtitle": "Recognising unhealthy patterns and setting limits",
+    "author": "MindWell Team",
+    "readTime": "6 min",
+    "category": "relationship"
+  }
+]

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../services/forum_service.dart';
+import '../services/auth_service.dart';
 
 class TextPage extends StatefulWidget {
   const TextPage({super.key});
@@ -8,157 +11,11 @@ class TextPage extends StatefulWidget {
 }
 
 class _TextPageState extends State<TextPage> {
-  // Sample forum data with more realistic content
-  final List<ForumPost> forumPosts = [
-    ForumPost(
-      id: 1,
-      title: 'What helps you reset after a bad day?',
-      author: 'SeekingBalance',
-      content:
-          'Had one of those days where everything went wrong. Lost my keys, spilled coffee on my shirt, and got stuck in traffic. How do you guys bounce back from rough days like this?',
-      comments: [
-        Comment(
-          author: 'ZenMaster22',
-          content:
-              'I take a hot shower and listen to calming music. It\'s like washing the day away.',
-        ),
-        Comment(
-          author: 'MindfulMom',
-          content:
-              'Gratitude list! Write down 3 good things, even tiny ones. It shifts my perspective.',
-        ),
-        Comment(
-          author: 'NightOwl',
-          content:
-              'Early bedtime with a good book. Tomorrow is always a fresh start.',
-        ),
-      ],
-      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    ForumPost(
-      id: 2,
-      title: 'I feel like I\'m always behind — how do you stay motivated?',
-      author: 'StrugglingSenior',
-      content:
-          'Everyone around me seems to have their life together while I\'m barely keeping up. How do you maintain motivation when you feel like you\'re constantly playing catch-up?',
-      comments: [
-        Comment(
-          author: 'WiseOwl',
-          content:
-              'Comparison is the thief of joy. Focus on your own journey, not others\' highlight reels.',
-        ),
-        Comment(
-          author: 'GradStudent2024',
-          content:
-              'Small daily wins! I celebrate completing even tiny tasks. Progress is progress.',
-        ),
-        Comment(
-          author: 'LifeCoachSarah',
-          content:
-              'Try time-blocking your day. When you plan ahead, you feel more in control.',
-        ),
-      ],
-      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-    ),
-    ForumPost(
-      id: 3,
-      title: 'Any good podcasts or books for mental health?',
-      author: 'BookwormSeeker',
-      content:
-          'Looking for recommendations on podcasts, books, or resources that have genuinely helped your mental health journey. What\'s been your game-changer?',
-      comments: [
-        Comment(
-          author: 'PodcastFan',
-          content:
-              'The Happiness Lab is amazing! Science-backed tips for wellbeing.',
-        ),
-        Comment(
-          author: 'ReadingRainbow',
-          content:
-              'Atomic Habits by James Clear changed how I approach self-improvement.',
-        ),
-        Comment(
-          author: 'TherapistTom',
-          content:
-              'Feeling Good by David Burns - excellent for understanding thought patterns.',
-        ),
-        Comment(
-          author: 'AudiobookLover',
-          content:
-              'Mindfulness apps like Headspace have guided meditations that really help.',
-        ),
-      ],
-      timestamp: DateTime.now().subtract(const Duration(hours: 6)),
-    ),
-    ForumPost(
-      id: 4,
-      title: 'Dealing with social anxiety at work meetings',
-      author: 'QuietProfessional',
-      content:
-          'I freeze up during team meetings and can barely speak. My ideas are good but I can\'t seem to voice them. Any tips for managing social anxiety in professional settings?',
-      comments: [
-        Comment(
-          author: 'PublicSpeaker',
-          content:
-              'Practice your main points beforehand. Having a mental script helps me feel prepared.',
-        ),
-        Comment(
-          author: 'IntrovertPower',
-          content:
-              'Arrive early and chat with a few people. It makes the room feel less intimidating.',
-        ),
-      ],
-      timestamp: DateTime.now().subtract(const Duration(hours: 12)),
-    ),
-    ForumPost(
-      id: 5,
-      title: 'Building healthy habits that actually stick',
-      author: 'HabitHunter',
-      content:
-          'I start strong with new routines but always fall off after a week or two. What are some daily habits that have genuinely improved your mental health long-term?',
-      comments: [
-        Comment(
-          author: 'MorningWarrior',
-          content:
-              'Morning sunlight walk - even 10 minutes. It regulates my mood and sleep cycle.',
-        ),
-        Comment(
-          author: 'JournalJourney',
-          content:
-              'Gratitude journal before bed. Just 3 things I\'m thankful for each day.',
-        ),
-        Comment(
-          author: 'MindfulEater',
-          content:
-              'Mindful eating! Putting away devices during meals helps me feel more present.',
-        ),
-      ],
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    ForumPost(
-      id: 6,
-      title: 'Celebrating small wins today! 🌟',
-      author: 'PositiveProgress',
-      content:
-          'Made my bed, replied to three emails, and took a 15-minute walk. Some days the smallest actions feel like major victories. What small wins are you celebrating?',
-      comments: [
-        Comment(
-          author: 'CheerleaderSoul',
-          content: 'YES! Those moments matter so much. Proud of you! 💪',
-        ),
-        Comment(
-          author: 'RecoveryRoad',
-          content: 'This perspective is everything. Every step forward counts.',
-        ),
-        Comment(
-          author: 'MotivatedMike',
-          content:
-              'You\'re inspiring me to notice my own small victories. Thank you!',
-        ),
-      ],
-      timestamp: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
+  final ForumService _forumService = ForumService();
+  final AuthService _authService = AuthService();
+
+  final TextEditingController _newTitleController = TextEditingController();
+  final TextEditingController _newContentController = TextEditingController();
 
   void _showPostDetails(ForumPost post) {
     Navigator.push(
@@ -167,19 +24,13 @@ class _TextPageState extends State<TextPage> {
     );
   }
 
-  String _timeAgo(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
+  String _timeAgoFromIso(String iso) => ForumService.timeAgoFromIso(iso);
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
+  @override
+  void dispose() {
+    _newTitleController.dispose();
+    _newContentController.dispose();
+    super.dispose();
   }
 
   @override
@@ -241,154 +92,297 @@ class _TextPageState extends State<TextPage> {
 
           const SizedBox(height: 16),
 
-          // Forum posts list
-          Expanded(
-            child: ListView.builder(
-              itemCount: forumPosts.length,
-              itemBuilder: (context, index) {
-                final post = forumPosts[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _showPostDetails(post),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: index.isEven
-                              ? Colors.white
-                              : const Color(0xFFF0F9F0),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: index.isEven
-                                ? const Color(0xFFE0E0E0)
-                                : const Color(
-                                    0xFF4CAF50,
-                                  ).withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withValues(alpha: 0.2),
-                              spreadRadius: 1,
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                            BoxShadow(
-                              color: index.isEven
-                                  ? Colors.blue.withValues(alpha: 0.05)
-                                  : Colors.green.withValues(alpha: 0.05),
-                              spreadRadius: 0,
-                              blurRadius: 12,
-                              offset: const Offset(0, 0),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Post title
-                            Text(
-                              post.title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
+          // New post input
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _newTitleController,
+                  decoration: const InputDecoration(
+                    hintText: 'Post title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _newContentController,
+                  decoration: const InputDecoration(
+                    hintText: 'Share something supportive...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final user = _authService.currentUser;
+                          final title = _newTitleController.text.trim();
+                          final content = _newContentController.text.trim();
+                          final messenger = ScaffoldMessenger.of(context);
+                          if (user == null) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Please sign in to post'),
                               ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            // Post meta info
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.person_outline,
-                                  size: 14,
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  post.author,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _timeAgo(post.timestamp),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                const Spacer(),
-                                Icon(
-                                  Icons.comment_outlined,
-                                  size: 14,
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${post.comments.length}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            // Post preview content
-                            Text(
-                              post.content.length > 100
-                                  ? '${post.content.substring(0, 100)}...'
-                                  : post.content,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black.withValues(alpha: 0.8),
-                                height: 1.4,
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            // Expandable indicator
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Tap to expand',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue.withValues(alpha: 0.7),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.expand_more,
-                                  size: 16,
-                                  color: Colors.blue.withValues(alpha: 0.7),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                            );
+                            return;
+                          }
+                          if (title.isEmpty || content.isEmpty) return;
+                          await _forumService.createPost(
+                            authorUid: user.uid,
+                            author:
+                                user.displayName ?? user.email ?? 'Anonymous',
+                            title: title,
+                            content: content,
+                          );
+                          _newTitleController.clear();
+                          _newContentController.clear();
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('Post submitted')),
+                          );
+                        },
+                        child: const Text('Post to forum'),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Forum posts list (realtime)
+          Expanded(
+            child: StreamBuilder<DatabaseEvent>(
+              stream: _forumService.postsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final value = snapshot.data!.snapshot.value;
+                final List<ForumPost> posts = [];
+                if (value is Map) {
+                  final entries = value.entries.toList()
+                    ..sort((a, b) {
+                      final ta = (a.value as Map)['timestamp'] ?? '';
+                      final tb = (b.value as Map)['timestamp'] ?? '';
+                      return tb.toString().compareTo(ta.toString());
+                    });
+                  for (final e in entries) {
+                    final k = e.key.toString();
+                    final Map postMap = Map<String, dynamic>.from(
+                      e.value as Map,
+                    );
+                    final title = postMap['title']?.toString() ?? '';
+                    final author = postMap['author']?.toString() ?? 'Anonymous';
+                    final content = postMap['content']?.toString() ?? '';
+                    final timestamp =
+                        postMap['timestamp']?.toString() ??
+                        DateTime.now().toIso8601String();
+                    final comments = <Comment>[];
+                    if (postMap['comments'] is Map) {
+                      final cm = postMap['comments'] as Map;
+                      final cEntries = cm.entries.toList()
+                        ..sort((a, b) {
+                          final ta = (a.value as Map)['timestamp'] ?? '';
+                          final tb = (b.value as Map)['timestamp'] ?? '';
+                          return ta.toString().compareTo(tb.toString());
+                        });
+                      for (final c in cEntries) {
+                        final cmMap = Map<String, dynamic>.from(c.value as Map);
+                        comments.add(
+                          Comment(
+                            author: cmMap['author']?.toString() ?? 'Anonymous',
+                            content: cmMap['content']?.toString() ?? '',
+                            timestampIso: cmMap['timestamp']?.toString(),
+                          ),
+                        );
+                      }
+                    }
+                    posts.add(
+                      ForumPost(
+                        id: k,
+                        title: title,
+                        author: author,
+                        content: content,
+                        comments: comments,
+                        timestampIso: timestamp,
+                      ),
+                    );
+                  }
+                }
+
+                if (posts.isEmpty) {
+                  return const Center(
+                    child: Text('No posts yet — be the first to share!'),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: posts.length,
+                  itemBuilder: (context, index) {
+                    final post = posts[index];
+                    final even = index.isEven;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _showPostDetails(post),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: even
+                                  ? Colors.white
+                                  : const Color(0xFFF0F9F0),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: even
+                                    ? const Color(0xFFE0E0E0)
+                                    : const Color(
+                                        0xFF4CAF50,
+                                      ).withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withValues(alpha: 0.2),
+                                  spreadRadius: 1,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                                BoxShadow(
+                                  color: even
+                                      ? Colors.blue.withValues(alpha: 0.05)
+                                      : Colors.green.withValues(alpha: 0.05),
+                                  spreadRadius: 0,
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 0),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  post.title,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_outline,
+                                      size: 14,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      post.author,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Icon(
+                                      Icons.access_time,
+                                      size: 14,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _timeAgoFromIso(
+                                        post.timestampIso ??
+                                            DateTime.now().toIso8601String(),
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Icon(
+                                      Icons.comment_outlined,
+                                      size: 14,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${post.comments.length}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  post.content.length > 100
+                                      ? '${post.content.substring(0, 100)}...'
+                                      : post.content,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Tap to expand',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.expand_more,
+                                      size: 16,
+                                      color: Colors.blue.withValues(alpha: 0.7),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -411,6 +405,8 @@ class PostDetailScreen extends StatefulWidget {
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
+  final ForumService _forumService = ForumService();
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -418,20 +414,46 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     super.dispose();
   }
 
-  void _addComment() {
-    if (_commentController.text.trim().isNotEmpty) {
-      setState(() {
-        widget.post.comments.add(
-          Comment(author: 'You', content: _commentController.text.trim()),
-        );
-      });
-      _commentController.clear();
-
+  void _addComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    final user = _authService.currentUser;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to comment')),
+      );
+      return;
+    }
+
+    // Optimistically add to UI
+    setState(() {
+      widget.post.comments.add(
+        Comment(
+          author: user.displayName ?? user.email ?? 'You',
+          content: text,
+          timestampIso: DateTime.now().toIso8601String(),
+        ),
+      );
+    });
+    _commentController.clear();
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _forumService.addComment(
+        postId: widget.post.id,
+        authorUid: user.uid,
+        author: user.displayName ?? user.email ?? 'Anonymous',
+        content: text,
+      );
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Comment added! 💬'),
           backgroundColor: Colors.green,
         ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to add comment: $e')),
       );
     }
   }
@@ -657,12 +679,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
 // Data models
 class ForumPost {
-  final int id;
+  final String id;
   final String title;
   final String author;
   final String content;
   final List<Comment> comments;
-  final DateTime timestamp;
+  final String? timestampIso;
 
   ForumPost({
     required this.id,
@@ -670,13 +692,14 @@ class ForumPost {
     required this.author,
     required this.content,
     required this.comments,
-    required this.timestamp,
+    required this.timestampIso,
   });
 }
 
 class Comment {
   final String author;
   final String content;
+  final String? timestampIso;
 
-  Comment({required this.author, required this.content});
+  Comment({required this.author, required this.content, this.timestampIso});
 }

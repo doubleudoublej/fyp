@@ -1,0 +1,73 @@
+-- Flyway migration: initial schema for mental_health_app
+
+CREATE TABLE
+IF NOT EXISTS users
+(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR
+(100) NOT NULL UNIQUE,
+  email VARCHAR
+(255),
+  password_hash VARCHAR
+(255) NOT NULL,
+  display_name VARCHAR
+(200),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON
+UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE
+IF NOT EXISTS activities
+(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  type VARCHAR
+(20) NOT NULL,
+  content LONGTEXT,
+  media_path VARCHAR
+(1024),
+  sentiment_score DECIMAL
+(4,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON
+UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_activities_user
+FOREIGN KEY
+(user_id) REFERENCES users
+(id) ON
+DELETE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE
+IF NOT EXISTS mood_logs
+(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  mood SMALLINT NOT NULL,
+  note TEXT,
+  logged_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_moodlogs_user FOREIGN KEY
+(user_id) REFERENCES users
+(id) ON
+DELETE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE
+IF NOT EXISTS articles
+(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR
+(500) NOT NULL,
+  body LONGTEXT NOT NULL,
+  author VARCHAR
+(200),
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_activities_user_created ON activities (user_id, created_at);
+CREATE INDEX idx_moodlogs_user_logged ON mood_logs (user_id, logged_at);

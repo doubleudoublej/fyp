@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_navigation_bar.dart';
+import '../widgets/points_badge.dart';
+import '../services/points_service.dart';
+import '../services/auth_service.dart';
 import 'mood_tracker_screen.dart';
 import '../widgets/mood_calendar.dart';
 
@@ -183,36 +186,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 16),
 
                             // Points Section
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF7ED321,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.star,
-                                    color: Color(0xFFFFD700),
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    '1,250 Wellness Points',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF7ED321),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            // Show live points from Realtime Database
+                            StreamBuilder<int>(
+                              stream: (() {
+                                final user = AuthService().currentUser;
+                                if (user == null) {
+                                  return const Stream<int>.empty();
+                                }
+                                return PointsService().pointsStream(user.uid);
+                              })(),
+                              builder: (context, snapshot) {
+                                final pts = snapshot.data ?? 0;
+                                return PointsBadge(points: pts);
+                              },
                             ),
                           ],
                         ),

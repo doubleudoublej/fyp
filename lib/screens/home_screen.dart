@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../widgets/forest_painter.dart';
 import '../widgets/bottom_navigation_bar.dart';
-import '../widgets/health_test_widget.dart';
+// Removed debug test widget import
 import '../widgets/weekly_progress_ring.dart';
 import '../widgets/weekly_summary_dialog.dart';
 import '../widgets/reward_dialog.dart';
 import '../widgets/task_card.dart';
 import '../widgets/points_badge.dart';
+import '../services/points_service.dart';
+import '../services/auth_service.dart';
 import '../models/weekly_activities.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _rewardAnimationController;
+  StreamSubscription<int>? _pointsSub;
 
   // User progress data (this would normally come from a state management solution)
   int currentPoints = 1250; // From profile page
@@ -39,6 +43,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _setupAnimations();
     _checkRewardStatus();
+    // Listen for live points when user is signed in
+    final auth = AuthService();
+    final pts = PointsService();
+    final user = auth.currentUser;
+    if (user != null) {
+      _pointsSub = pts.pointsStream(user.uid).listen((value) {
+        setState(() => currentPoints = value);
+      });
+
+      // Ensure DB and local initial value are in sync. If DB is empty (0)
+      // but the app has a seeded `currentPoints` (e.g. from local state during
+      // development), persist it so other screens read the same value.
+      pts
+          .getPoints(user.uid)
+          .then((dbPoints) {
+            if (dbPoints == 0 && currentPoints > 0) {
+              // populate DB with local points
+              pts.setPoints(user.uid, currentPoints);
+            } else if (dbPoints > 0 && dbPoints != currentPoints) {
+              // adopt DB as source-of-truth
+              setState(() => currentPoints = dbPoints);
+            }
+          })
+          .catchError((_) {});
+    }
   }
 
   void _setupAnimations() {
@@ -65,6 +94,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     sampleWeeklyActivities[weekday]!.add({'desc': desc, 'points': points});
     currentPoints += points;
     _checkRewardStatus();
+    // Persist points to Realtime Database so other screens (Profile) stay in sync.
+    try {
+      final user = AuthService().currentUser;
+      if (user != null) {
+        // Fire-and-forget; attach a catchError so failures (eg permission denied)
+        // don't become unhandled exceptions in the app.
+        PointsService().addPoints(user.uid, points).catchError((e) {
+          // Optionally log or show a message in debug mode.
+          if (kDebugMode) debugPrint('addPoints failed: $e');
+        });
+      }
+    } catch (_) {}
   }
 
   // Weekday label removed — center label now shows the weekly TARGET
@@ -106,6 +147,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       isRewardAvailable = false;
       isAnimating = false;
     });
+    // Also persist awarded bonus to DB so profile/home stay in sync
+    try {
+      final user = AuthService().currentUser;
+      if (user != null) {
+        await PointsService().addPoints(user.uid, 100);
+      }
+    } catch (_) {}
   }
 
   void _showRewardDialog() {
@@ -119,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _rewardAnimationController.dispose();
+    _pointsSub?.cancel();
     super.dispose();
   }
 
@@ -158,8 +207,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           const SizedBox(height: 40),
-                          // Health test button (for quick API smoke tests)
-                          if (kDebugMode) const HealthTestWidget(),
+                          // Health test button removed
 
                           // Progress Circle with animated present
                           GestureDetector(
@@ -255,31 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             },
                           ),
 
-                          // Test button for quick progress (only in development)
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              // Add just enough points to reach the weekly goal for testing
-                              final int remaining = weeklyGoal - _weeklyTotal;
-                              if (remaining > 0) {
-                                _addActivity('Test fill', remaining);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Filled progress for test'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFD700),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                            child: const Text('🎯 Fill Progress (Test)'),
-                          ),
+                          // Development-only Fill Progress button removed
                         ],
                       ),
                     ),

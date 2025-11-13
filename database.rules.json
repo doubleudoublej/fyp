@@ -1,0 +1,45 @@
+{
+  "rules": {
+    "moods": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "assessments": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "users" : {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "points": {
+        	".validate": "newData.isNumber() || newData.isString() || newData.val() >= 0"
+        }
+      }
+    },
+      "forum": {
+      "posts": {
+        ".read": "true",
+        ".write": "auth != null",
+        "$postId": {
+          ".validate": "newData.hasChildren(['authorUid','author','title','content','timestamp'])",
+          "authorUid": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "comments": {
+            ".write": "auth != null",
+            "$commentId": {
+              ".validate": "newData.hasChildren(['authorUid','author','content','timestamp']) && newData.child('authorUid').val() === auth.uid"
+            }
+          }
+        }
+      }
+    },
+      ".read": false,
+    	".write": false
+  }
+}

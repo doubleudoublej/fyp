@@ -1,48 +1,37 @@
-import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
+/// Simple auth wrapper for Google Sign-In and Firebase Auth.
 class AuthService {
-  final Dio _dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  AuthService(String baseUrl)
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-        ),
-      );
+  User? get currentUser => _auth.currentUser;
 
-  Future<void> register(
-    String username,
-    String password, {
-    String? email,
-  }) async {
-    await _dio.post(
-      '/api/auth/register',
-      data: {
-        'username': username,
-        'password': password,
-        if (email != null) 'email': email,
-      },
+  Stream<User?> authStateChanges() => _auth.authStateChanges();
+
+  /// Sign in using Google Sign-In and Firebase Authentication.
+  /// Returns the [UserCredential] on success, or null if the user cancels.
+  Future<UserCredential?> signInWithGoogle() async {
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) return null; // user cancelled
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
     );
+
+    return await _auth.signInWithCredential(credential);
   }
 
-  Future<String?> login(String username, String password) async {
-    final resp = await _dio.post(
-      '/api/auth/login',
-      data: {'username': username, 'password': password},
-    );
-    final token = resp.data['token'] as String?;
-    if (token != null) {
-      await _storage.write(key: 'jwt', value: token);
-    }
-    return token;
+  /// Sign out from Firebase and Google.
+  Future<void> signOut() async {
+    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
   }
-
-  Future<void> logout() async {
-    await _storage.delete(key: 'jwt');
-  }
-
-  Future<String?> readToken() => _storage.read(key: 'jwt');
 }
