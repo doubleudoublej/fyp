@@ -1,56 +1,90 @@
-# my_app
+# MindWell – Mental Health Companion (Flutter)
 
-A new Flutter project.
+MindWell is a cross-platform mental wellness application designed for university students.  
+It provides tools for **mood tracking**, **guided journaling**, **curated mental health articles**, **anonymous community support**, and a **lightweight gamification system** to encourage consistent self-care.
 
-## Getting Started
+This repository contains the project.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## ✨ Features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 📅 **Mood Tracker** – Emoji-based monthly calendar with daily reflections  
+- 📖 **Curated Articles** – Mental health content grouped by themes (anxiety, stress, self-care, etc.)  
+- 💬 **Anonymous Community Forum** – Safe space to ask questions and share experiences under pseudonyms  
+- 🎁 **Voice Encouragement Tree** – Send and receive supportive anonymous voice messages  
+- 🏆 **Gamified Weekly Progress Ring** – Earn points for healthy actions and track weekly achievements  
+- 👤 **Profile & Appointments** – View basic profile information, mood history, and upcoming appointments  
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
 
-## Running backend + Flutter (local development)
+## 🧱 Tech Stack
 
-This repository contains a `backend/` folder alongside the Flutter app. The backend is a Spring Boot application that runs on port `8080` by default in this workspace. The Flutter app's API client is configured to talk to the backend on port `8080` for local development.
+- **Frontend:** Flutter (Dart SDK 3.8.1)  
+- **State Management:** `provider`  
+- **Networking:** `dio`  
+- **Secure Storage:** `flutter_secure_storage`  
+- **Backend API:** Spring Boot + MyBatis + MySQL 
+- **Firebase:** For project configuration (e.g. hosting / analytics) via `firebase_options.dart`
 
-Quick steps:
 
-1. Start the backend
+---
 
-	- From PowerShell:
+# Basic Usage Flow
 
-```powershell
-cd C:\Users\JJWDe\fyp\backend
-.\gradlew bootRun
-```
+### 1. Register or Log In
+- usage of google api to login
+- might have to set up api on your end to enable it.
 
-	- To run on a different port (example `8000`):
+---
 
-```powershell
-.\gradlew bootRun --args='--server.port=8000'
-```
+### 2. Onboarding Questionnaire
+- Complete PHQ-9 and GAD-7 assessments  
+- Used to personalize article recommendations
+- the articles are in assets/articles for you to inlcude into your storage
 
-2. Start the Flutter app
+---
 
-```powershell
-cd C:\Users\JJWDe\fyp
-flutter pub get
-flutter run
-```
+### 3. Home Dashboard
+- Weekly Progress Ring  
+- Task list and points tracking  
+- Quick navigation to features  
 
-3. API endpoints to test
+---
 
-	- Health check (permitted without auth): `http://localhost:8080/api/health`
-	- Actuator health (if enabled): `http://localhost:8080/actuator/health`
+### 4. Mood Tracker
+- Emoji selection for daily mood  
+- Typed journal reflection  
+- Monthly mood overview calendar  
 
-Notes:
+---
 
-- Android emulator: the ApiClient maps to `http://10.0.2.2:8080` so the emulator reaches the host machine.
-- Physical devices: use your PC LAN IP, for example `http://192.168.1.42:8080` and allow the port through your firewall.
-- If you want `/actuator/**` accessible during development, add `management.endpoints.web.exposure.include=health,info` to `backend/src/main/resources/application.properties` and permit `/actuator/**` in `SecurityConfig`.
+### 5. Articles Section
+- Browse curated mental health articles  
+- Content grouped by topics (Anxiety, Stress, Self-care, etc.)  
+- Personalized recommendations  
+
+---
+
+### 6. Community Forum
+- Anonymous posting & replying  
+- Peer support for mental health discussions  
+- All posts moderated before publication  
+
+---
+
+### 7. Voice Encouragement Tree
+- Send supportive voice messages  
+- Receive random anonymous audio encouragement  
+
+---
+
+### 8. Profile Page
+- View and edit user profile  
+- Track weekly points and achievements  
+- Record upcoming appointments  
+- Access mood history  
+
+---
+
+
