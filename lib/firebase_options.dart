@@ -40,51 +40,5 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'apiKey PlaceHolder',
-    appId: '1:164349199073:web:9fc245e8944ba37c77ada0',
-    messagingSenderId: '164349199073',
-    projectId: 'fyp-mha',
-    authDomain: 'fyp-mha.firebaseapp.com',
-    storageBucket: 'fyp-mha.firebasestorage.app',
-    measurementId: 'G-KW88H11M39',
-    databaseURL:
-        'https://fyp-mha-default-rtdb.asia-southeast1.firebasedatabase.app',
-  );
-
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'apiKey PlaceHolder',
-    appId: '1:164349199073:android:f34d1f4ff1f7289377ada0',
-    messagingSenderId: '164349199073',
-    projectId: 'fyp-mha',
-    storageBucket: 'fyp-mha.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'apiKey PlaceHolder',
-    appId: '1:164349199073:ios:df98a74d777b32aa77ada0',
-    messagingSenderId: '164349199073',
-    projectId: 'fyp-mha',
-    storageBucket: 'fyp-mha.firebasestorage.app',
-    iosBundleId: 'com.example.myApp',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'apiKey PlaceHolder',
-    appId: '1:164349199073:ios:df98a74d777b32aa77ada0',
-    messagingSenderId: '164349199073',
-    projectId: 'fyp-mha',
-    storageBucket: 'fyp-mha.firebasestorage.app',
-    iosBundleId: 'com.example.myApp',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'apiKey PlaceHolder',
-    appId: '1:164349199073:web:3fd8b99c65682e5177ada0',
-    messagingSenderId: '164349199073',
-    projectId: 'fyp-mha',
-    authDomain: 'fyp-mha.firebaseapp.com',
-    storageBucket: 'fyp-mha.firebasestorage.app',
-    measurementId: 'G-8YRQV28NCL',
-  );
-}
+/// Set up your firebase stuff here with api key, id, messagesenderid, projectid, storagebucket etc
+/// Removed Firebase configuration options for web, android, ios, macos, and windows. 
